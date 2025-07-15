@@ -43,17 +43,19 @@ class PNB(Base):
         self.__entries = []
         for data in self.__data:
             if data.get('Withdrawal'):
-                self.__entries.append([data.get('Transaction Date'),data.get('Withdrawal'),data.get('Narration')])
+                self.__entries.append([data.get('Withdrawal'),data.get('Transaction Date'),data.get('Narration'),"expense"])
+            if data.get("Deposit"):
+                self.__entries.append([data.get('Deposit'),data.get('Transaction Date'),data.get('Narration'),"income"])
 
     
     def standardize_data(self):
         for data in self.__entries:
-            data[0] = datetime.strptime(data[0], "%d/%m/%Y").strftime("%Y-%m-%d")
-            data[1] = float(data[1].strip().replace(",",""))
+            data[1] = datetime.strptime(data[1], "%d/%m/%Y").strftime("%Y-%m-%d")
+            data[0] = float(data[0].strip().replace(",",""))
 
     @property
     def entries(self):
-        """returns in order date money desc"""
+        """returns in order money date desc type"""
         self.read()
         self.sanitize_data()
         self.standardize_data()

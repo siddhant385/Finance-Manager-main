@@ -13,23 +13,23 @@ class DatabaseManager:
                 tag TEXT,
                 amount REAL,
                 date TEXT,
-                desc TEXT
-                            
+                desc TEXT,
+                type TEXT CHECK(type IN ('income', 'expense')) NOT NULL           
             );
         """)
         self.conn.commit()
 
-    def insert_data(self, tag, amount, date, desc):
+    def insert_data(self, tag, amount, date, desc, type):
         self.cursor.execute(
-            "SELECT 1 FROM finance_manager WHERE tag=? AND amount=? AND date=? AND desc=?",
-            (tag, amount, date, desc)
+            "SELECT 1 FROM finance_manager WHERE tag=? AND amount=? AND date=? AND desc=? AND type=?",
+            (tag, amount, date, desc, type)
         )
         exists = self.cursor.fetchone()
 
         if not exists:
             self.cursor.execute(
-                "INSERT INTO finance_manager (tag, amount, date, desc) VALUES (?, ?, ?, ?)",
-                (tag, amount, date, desc)
+                "INSERT INTO finance_manager (tag, amount, date, desc, type) VALUES (?, ?, ?, ?, ?)",
+                (tag, amount, date, desc ,type)
             )
             self.conn.commit()
             return True  # Successfully inserted
@@ -43,10 +43,10 @@ class DatabaseManager:
         self.conn.commit()
         
 
-    def update_by_id(self,id:int,tag:str,amount:float,date:str):
+    def update_by_id(self,id:int,tag:str,amount:float,date:str,desc:str,type:str):
         self.cursor.execute(
-            "UPDATE finance_manager SET tag = ?, amount = ?, date= ? WHERE id = ?;",
-            (tag,amount,date,id)
+            "UPDATE finance_manager SET tag = ?, amount = ?, date= ?, desc= ?, type= ? WHERE id = ?;",
+            (tag,amount,date,desc,type,id)
         )
         self.conn.commit()
 
@@ -73,11 +73,13 @@ class DatabaseManager:
         )
         return self.cursor.fetchall()
     
-    def fetch_total_amount(self):
-        self.cursor.execute(
-            "SELECT SUM(amount) FROM finance_manager;"
-        )
-        return self.cursor.fetchone()
+    def fetch_total_income(self):
+        self.cursor.execute("SELECT SUM(amount) FROM finance_manager WHERE type = 'income';")
+        return self.cursor.fetchone()[0] or 0
+
+    def fetch_total_expense(self):
+        self.cursor.execute("SELECT SUM(amount) FROM finance_manager WHERE type = 'expense';")
+        return self.cursor.fetchone()[0] or 0
 
     def fetch_all_tags(self):
         self.cursor.execute(
@@ -87,4 +89,77 @@ class DatabaseManager:
     
     def close(self):
         self.conn.close()
+    
+    def get_monthly_trend(self):
+        self.dbmanager.cursor.execute("""
+            SELECT strftime('%Y-%m', date) AS month,
+                SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS total_income,
+                SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS total_expense
+            FROM finance_manager
+            GROUP BY month
+            ORDER BY month;
+        """)
+        return self.dbmanager.cursor.fetchall()
 
+
+    def fetch_average_income_per_month(self):
+        self.cursor.execute("""
+            SELECT AVG(monthly_income) FROM (
+                SELECT strftime('%Y-%m', date) AS month,
+                    SUM(amount) AS monthly_income
+                FROM finance_manager
+                WHERE type = 'income'
+                GROUP BY month
+            );
+        """)
+        return self.cursor.fetchone()[0] or 0
+
+    def fetch_average_expense_per_month(self):
+        self.cursor.execute("""
+            SELECT AVG(monthly_expense) FROM (
+                SELECT strftime('%Y-%m', date) AS month,
+                    SUM(amount) AS monthly_expense
+                FROM finance_manager
+                WHERE type = 'expense'
+                GROUP BY month
+            );
+        """)
+        return self.cursor.fetchone()[0] or 0
+
+
+    def fetch_top_tags_by_expense(self, limit=5):
+        self.cursor.execute("""
+            SELECT tag, SUM(amount) as total
+            FROM finance_manager
+            WHERE type = 'expense'
+            GROUP BY tag
+            ORDER BY total DESC
+            LIMIT ?;
+        """, (limit,))
+        return self.cursor.fetchall()
+    
+    def fetch_last_n_months_trend(self, n=3):
+        self.cursor.execute(f"""
+            SELECT strftime('%Y-%m', date) AS month,
+                SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income,
+                SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expense
+            FROM finance_manager
+            GROUP BY month
+            ORDER BY month DESC
+            LIMIT {n};
+        """)
+        return self.cursor.fetchall()
+    
+    def fetch_large_expenses(self, threshold=10000):
+        self.cursor.execute("""
+            SELECT * FROM finance_manager
+            WHERE type = 'expense' AND amount >= ?;
+        """, (threshold,))
+        return self.cursor.fetchall()
+
+
+
+
+
+
+    

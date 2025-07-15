@@ -16,12 +16,12 @@ class Importer:
     
     @property
     def entries(self):
-        """returns in date amount desc tag"""
+        """returns in amount date desc tag type"""
         raw_entries = self.__bank_class.entries  # [date, amount, desc]
         tagged_entries = []
         for entry in raw_entries:
             tag = self.classifier.classify(entry[2])  # entry[2] = description
-            tagged_entries.append([entry[0], entry[1], entry[2], tag])
+            tagged_entries.append([entry[0], entry[1], entry[2], tag, entry[3]])
         return tagged_entries
 
 
