@@ -10,4 +10,4 @@ wheels/
 *.pdf
 # Virtual environments
 .venv
-
+.env
