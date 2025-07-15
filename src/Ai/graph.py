@@ -64,7 +64,9 @@ builder.set_finish_point("summarizer")
 
 # Compile
 graph = builder.compile()
-
+# dot_string = graph.get_graph().to_dot()
+# with open("finance_graph.dot", "w") as f:
+#     f.write(dot_string)
 
 def run():
     input_state = {
