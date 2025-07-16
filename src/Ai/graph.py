@@ -79,3 +79,6 @@ def run():
 
     result = graph.invoke(input_state)
     print("\n📄 Final Report Markdown:\n", result["final_report_markdown"])
+
+if __name__ == "__main__":
+    run()

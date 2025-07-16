@@ -1,12 +1,16 @@
-from .databaseManager import DatabaseManager
+from .database.databaseManager import DatabaseManager
+from .database.models import db, Finance
+
 from .importer import Importer
-from src.config import DB_PATH
+
 
 
 class FinanceManager:
     def __init__(self):
-        self.dbmanager = DatabaseManager(DB_PATH)
-        self.dbmanager.create_table()
+        if db.is_closed():
+            db.connect()
+        db.create_tables([Finance])
+        self.dbmanager = DatabaseManager()
         
     def extract_bank_statement_to_db(self,file,bankname):
         self.importer = Importer(file,bankname)
@@ -14,6 +18,9 @@ class FinanceManager:
             self.add_data(tag,amount,date,desc,type)
 
     def add_data(self,tag,amount,date,desc,isIncome):
+        """Add Data to the database"
+        Args are: tag: str, amount: float, date: str (YYYY-MM-DD), desc: str, isIncome: str
+        """
         if isinstance(isIncome, str) and isIncome in ["income", "expense"]:
             type = isIncome
         else:
@@ -22,11 +29,17 @@ class FinanceManager:
     
     def update_data(self,id,tag,amount,date,desc,isIncome):
         """Type could only be income or expense"""
-        if isIncome:
-            type = "income"
+        if isinstance(isIncome, str) and isIncome in ["income", "expense"]:
+            type = isIncome
         else:
-            type="expense"
+            type = "income" if isIncome else "expense"
         self.dbmanager.update_by_id(id,tag,amount,date,desc,type)
+    
+    def get_data_by_id(self,id):
+        """to get data by id"""
+        print(f"Getting data for ID: {self.dbmanager.fetch_data_by_id(id)}\n\n\n\n\n")
+        return self.dbmanager.fetch_data_by_id(id)
+        
 
     def delete_data(self,id):
         self.dbmanager.delete_by_id(id)
@@ -34,6 +47,7 @@ class FinanceManager:
     def get_all_data(self):
         data = self.dbmanager.fetch_all_data()
         return data
+
     def get_all_tags(self):
         data = self.dbmanager.fetch_all_tags()
         return data

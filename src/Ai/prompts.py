@@ -62,7 +62,7 @@ RESPONSE FORMAT (Output *only* this JSON block format — no explanation, no ext
 You are a financial planning assistant helping the user achieve their financial goals.
 
 USER GOAL PROFILE:
-{json.dumps(analyzer_result, indent=2)}
+{json.dumps(analyzer_result,default=str, indent=2)}
 
 TASK:
 Design a structured and feasible goal plan based on the following criteria:
@@ -100,7 +100,7 @@ Design a structured and feasible goal plan based on the following criteria:
   "inflation_applied": false,
   "future_value": 80000,
   "monthly_saving_required": 6667,
-  "current_monthly_savings": -45000,
+  "current_monthly_savings": -45000 should be integer,
   "is_feasible": false,
   "feasibility_gap": 51667,
   "recommendations": [
@@ -166,16 +166,16 @@ You are a professional financial advisor preparing a formal Financial Planning R
 
 📦 DATA:
 COLLECTOR DATA:
-{json.dumps(state["collector_data"], indent=2)}
+{json.dumps(state["collector_data"], indent=2,default=str)}
 
 ANALYSIS RESULT:
-{json.dumps(state["analysis_result"], indent=2)}
+{json.dumps(state["analysis_result"], indent=2,default=str)}
 
 GOAL PLAN:
-{json.dumps(state["goal_planner_result"], indent=2)}
+{json.dumps(state["goal_planner_result"], indent=2,default=str)}
 
 ADVICE:
-{json.dumps(state["final_advice"], indent=2)}
+{json.dumps(state["final_advice"], indent=2,default=str)}
 
 📝 TASK:
 Write a comprehensive **financial summary report** based on the structure below. Keep the tone friendly and personalized, but professional.

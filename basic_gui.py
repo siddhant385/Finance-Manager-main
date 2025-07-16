@@ -1,228 +1,503 @@
 import streamlit as st
-from src.ai import AI
-from src.financeManager import FinanceManager
+
 import pandas as pd
+
+import plotly.express as px
+
 from datetime import datetime
 
-st.set_page_config(page_title="💰 Finance Tool", layout="wide")
-st.title("💰 AI-Powered Financial Manager")
+import tempfile
 
-fm = FinanceManager()
-ai = AI()
 
-# Tabs
-tab1, tab2, tab3 = st.tabs(["🧠 AI Advisor", "📊 Finance Dashboard", "🧾 Manage Records"])
 
-# =====================
-# 🧠 AI ADVISOR SECTION
-# =====================
-with tab1:
-    st.header("AI-Powered Financial Advisor")
+# Assuming your project structure is sound, these imports should work.
 
-    col1, col2 = st.columns(2)
+# Make sure this script is run from the root of your project.
 
-    with col1:
-        name = st.text_input("👤 Your Name")
-        age = st.text_input("🎂 Your Age")
-        goal = st.text_input("🎯 Financial Goal")
-        goal_timeline = st.selectbox("📅 Timeline", ["6 months", "1 year", "2-5 years", "More than 5 years"])
-        risk_style = st.radio("📉 Risk Reaction", [
-            "❌ Panic and withdraw everything — I can't tolerate loss",
-            "🕒 Do nothing — I will wait for recovery",
-            "📈 Invest more — I see it as an opportunity"
-        ])
+from src.financeManager import FinanceManager
 
-    with col2:
-        habit_concern = st.text_area("⚠️ Spending Concern")
-        income_source = st.selectbox("💼 Income Source", ["Salary", "Business", "Freelancing", "Other", "No Income"])
-        income_stability = st.selectbox("📊 Income Stability", ["Yes, almost the same", "No, it fluctuates"])
-        dependents = st.selectbox("👪 Financial Dependents", ["0", "1", "2", "3 or more"])
-        existing_commitments = st.text_area("📄 Loans/Investments")
+from src.ai import AI
 
-    if st.button("🚀 Generate AI Report"):
-        if goal and goal_timeline and habit_concern:
-            with st.spinner("Generating your financial report..."):
-                user_data = {
-                    "name": name,
-                    "age": age,
-                    "goal": f"{goal} (Timeline: {goal_timeline})",
-                    "risk_question": risk_style,
-                    "bad_habit_concern": habit_concern,
-                    "income_source": income_source,
-                    "income_stability": income_stability,
-                    "dependents": dependents,
-                    "existing_commitments": existing_commitments
-                }
-                result = ai.advisor({"user_answers": user_data})
-                st.success("✅ Report Ready!")
 
-                # FINAL REPORT
-                st.markdown("### 📄 Final Report")
-                st.markdown(result.get("report", "❌ No report found."))
 
-                # FINAL ADVICE
-                final_advice = result.get("final_advice", {})
-                if final_advice:
-                    st.markdown("### 🧠 Final Advice")
-                    st.markdown(f"**💸 Expense Management:** {final_advice['expense_management']}")
-                    st.markdown(f"**📈 Investment Advice:** {final_advice['investment_advice']}")
-                    st.markdown(f"**🛡️ Insurance Advice:** {final_advice['insurance_advice']}")
-                    st.markdown(f"**💰 Tax Planning:** {final_advice['tax_planning']}")
-                    st.markdown(f"**🚨 Emergency Fund:** {final_advice['emergency_fund']}")
-                    st.markdown("**🧩 Action Plan:**")
-                    for step in final_advice["action_plan"]:
-                        st.markdown(f"- {step}")
+class FinanceApp:
 
-                # ANALYSIS RESULT
-                analysis = result.get("analysis_result", {})
-                if analysis:
-                    st.markdown("### 📊 Goal Analysis")
-                    col1, col2 = st.columns(2)
+    def __init__(self):
+
+        st.set_page_config(page_title="💰 FinanceAI", layout="wide", initial_sidebar_state="expanded")
+
+        self.fm = FinanceManager()
+
+        self.ai = AI()
+
+
+
+        if "ai_report" not in st.session_state:
+
+            st.session_state.ai_report = None
+
+        if "active_tab" not in st.session_state:
+
+            st.session_state.active_tab = "Dashboard"
+
+
+
+    def run(self):
+
+        st.title("💰 FinanceAI: Your Personal Financial Manager")
+
+
+
+        tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "🧾 Manage Records", "🧠 AI Advisor"])
+
+
+
+        with tab1:
+
+            self.render_dashboard()
+
+        with tab2:
+
+            self.render_record_manager()
+
+        with tab3:
+
+            self.render_ai_advisor()
+
+
+
+    def render_dashboard(self):
+
+        st.header("Financial Overview")
+
+        all_data = self.fm.get_all_data()
+
+
+
+        if not all_data:
+
+            st.info("No financial data found. Add some transactions in the 'Manage Records' tab to get started!")
+
+            return
+
+
+
+        df = pd.DataFrame(all_data)
+
+        df['amount'] = pd.to_numeric(df['amount'])
+
+        df['date'] = pd.to_datetime(df['date'])
+
+
+
+        total_income = self.fm.get_total_income()
+
+        total_expense = self.fm.get_total_expense()
+
+        savings = self.fm.get_savings()
+
+
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("💰 Total Income", f"₹{total_income:,.2f}")
+
+        col2.metric("💸 Total Expense", f"₹{total_expense:,.2f}", delta_color="inverse")
+
+        col3.metric("💼 Net Savings", f"₹{savings:,.2f}")
+
+
+
+        st.markdown("---")
+
+        
+
+        col1, col2 = st.columns([2, 1])
+
+
+
+        with col1:
+
+            st.subheader("📈 Monthly Trends")
+
+            monthly_trend = df.groupby([pd.Grouper(key='date', freq='M'), 'type'])['amount'].sum().unstack(fill_value=0).reset_index()
+
+            monthly_trend['date'] = monthly_trend['date'].dt.strftime('%Y-%b')
+
+            fig_trend = px.line(monthly_trend, x='date', y=['income', 'expense'], title="Income vs. Expense Over Time",
+
+                                labels={'value': 'Amount (₹)', 'date': 'Month'}, markers=True)
+
+            fig_trend.update_layout(legend_title_text='Transaction Type')
+
+            st.plotly_chart(fig_trend, use_container_width=True)
+
+
+
+        with col2:
+
+            st.subheader("📁 Expense Categories")
+
+            expense_df = df[df['type'] == 'expense']
+
+            top_tags = expense_df.groupby('tag')['amount'].sum().nlargest(7).reset_index()
+
+            fig_pie = px.pie(top_tags, names='tag', values='amount', title="Top Expense Categories", hole=0.3)
+
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+
+
+        st.subheader("🔍 Transaction Breakdown")
+
+        fig_sunburst = px.sunburst(df, path=['type', 'tag'], values='amount', title="Income & Expense Breakdown by Category")
+
+        st.plotly_chart(fig_sunburst, use_container_width=True)
+
+        
+
+        st.subheader("📄 Recent Transactions")
+
+        st.dataframe(df.sort_values(by='date', ascending=False).head(10))
+
+
+
+
+
+    def render_record_manager(self):
+
+        st.header("Manage Your Financial Records")
+
+        
+
+        action = st.radio("Choose an action:", ["Add Transaction", "Update/Delete Transaction", "Import/Export Data"], horizontal=True, label_visibility="collapsed")
+
+        
+
+        st.markdown("---")
+
+        
+
+        if action == "Add Transaction":
+
+            with st.form("add_transaction_form", clear_on_submit=True):
+
+                st.subheader("➕ Add a New Transaction")
+
+                tag = st.text_input("Tag (e.g., Salary, Groceries)", key="add_tag")
+
+                amount = st.number_input("Amount", min_value=0.01, step=100.0, key="add_amount")
+
+                date = st.date_input("Date", value=datetime.today(), key="add_date")
+
+                desc = st.text_input("Description", key="add_desc")
+
+                ttype = st.radio("Type", ["expense", "income"], key="add_type", horizontal=True)
+
+
+
+                submitted = st.form_submit_button("✅ Add Entry")
+
+                if submitted:
+
+                    if not tag or not amount:
+
+                        st.warning("Tag and Amount are required.")
+
+                    else:
+
+                        self.fm.add_data(tag, amount, date.strftime("%Y-%m-%d"), desc, ttype)
+
+                        st.success(f"Added '{tag}' transaction successfully!")
+
+                        st.rerun()
+
+
+
+        elif action == "Update/Delete Transaction":
+
+            st.subheader("✏️ Update or ❌ Delete a Transaction")
+
+            all_data = self.fm.get_all_data()
+
+            if not all_data:
+
+                st.info("No data to manage.")
+
+                return
+
+
+
+            df = pd.DataFrame(all_data)
+
+            df['display'] = df['date'].astype(str) + " | " + df['tag'] + " | ₹" + df['amount'].astype(str) + " (" + df['type'] + ")"
+
+            
+
+            option = st.selectbox("Select a transaction to manage:", df['display'], index=None, placeholder="Search for a transaction...")
+
+
+
+            if option:
+
+                selected_id = df[df['display'] == option]['id'].iloc[0]
+
+                record = self.fm.get_data_by_id(selected_id)
+
+                
+
+                with st.form("update_form"):
+
+                    st.write(f"**Now editing transaction ID: {record.id}**")
+
+                    new_tag = st.text_input("Tag", value=record.tag)
+
+                    new_amount = st.number_input("Amount", value=record.amount)
+
+                    new_date = st.date_input("Date", value=record.date)
+
+                    new_desc = st.text_input("Description", value=record.desc)
+
+                    new_type = st.radio("Type", ["income", "expense"], index=0 if record.type == "income" else 1, horizontal=True)
+
+                    
+
+                    col1, col2 = st.columns([1,5])
+
                     with col1:
-                        st.markdown(f"**🎯 Goal Type:** {analysis['goal_type']}")
-                        st.markdown(f"**📝 Goal Detail:** {analysis['goal_detail']}")
-                        st.markdown(f"**⏳ Time Horizon:** {analysis['time_horizon']}")
-                        st.markdown(f"**⚖️ Risk Estimate:** {analysis['risk_estimate']}")
+
+                        update_submitted = st.form_submit_button("✏️ Update")
+
                     with col2:
-                        st.markdown(f"**💡 Needs Budgeting Help:** {'✅ Yes' if analysis['needs_budgeting_help'] else '❌ No'}")
-                        st.markdown(f"**✅ Realistic Goal:** {'✅ Yes' if analysis['realistic_goal'] else '❌ No'}")
-                        st.markdown(f"**🪙 Savings Deficit:** {'✅ Yes' if analysis['current_savings_deficit'] else '❌ No'}")
-                    st.markdown(f"**🧠 Summary:** {analysis['reasoning_summary']}")
-                    st.markdown("**🧭 Recommendations:**")
-                    for r in analysis["recommended_next"]:
-                        st.markdown(f"- {r}")
 
-                # GOAL PLANNER RESULT
-                goal_plan = result.get("goal_planner_result", {})
-                if goal_plan:
-                    st.markdown("### 🎯 Goal Planner Output")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**🏷️ Category:** {goal_plan['goal_category']}")
-                        st.markdown(f"**📌 Goal Name:** {goal_plan['goal_name']}")
-                        st.markdown(f"**🎯 Target Amount:** ₹{goal_plan['target_amount']:,}")
-                        st.markdown(f"**📅 Time Horizon:** {goal_plan['time_years']} years")
-                        st.markdown(f"**📈 Inflation Adjusted:** {'✅ Yes' if goal_plan['inflation_applied'] else '❌ No'}")
-                        st.markdown(f"**🔮 Future Value:** ₹{goal_plan['future_value']:,}")
-                    with col2:
-                        st.markdown(f"**💸 Monthly Saving Needed:** ₹{goal_plan['monthly_saving_required']:,}")
-                        st.markdown(f"**💼 Current Saving:** ₹{goal_plan['current_monthly_savings']:,}")
-                        st.markdown(f"**✅ Feasible:** {'✅ Yes' if goal_plan['is_feasible'] else '❌ No'}")
-                        st.markdown(f"**⚠️ Gap:** ₹{goal_plan['feasibility_gap']:,}")
-                    st.markdown("**📋 Recommendations:**")
-                    for rec in goal_plan["recommendations"]:
-                        st.markdown(f"- {rec}")
-        else:
-            st.warning("❗ Please fill all required fields.")
+                        delete_submitted = st.form_submit_button("❌ Delete", type="primary")
 
 
-# =========================
-# 📊 DASHBOARD/ANALYTICS TAB
-# =========================
-with tab2:
-    st.header("📊 Financial Summary Dashboard")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("💰 Total Income", f"₹{fm.get_total_income()}")
-    col2.metric("💸 Total Expense", f"₹{fm.get_total_expense()}")
-    col3.metric("💼 Savings", f"₹{fm.get_savings()}")
+                    if update_submitted:
 
-    st.subheader("📈 Monthly Trend")
-    trend = fm.get_last_n_months_trend()
-    if trend:
-        df_trend = pd.DataFrame(trend, columns=["Month", "Income", "Expense"])
-        st.line_chart(df_trend.set_index("Month"))
-    else:
-        st.info("No trend data available.")
+                        self.fm.update_data(record.id, new_tag, new_amount, new_date.strftime("%Y-%m-%d"), new_desc, new_type)
 
-    st.subheader("🔝 Top Expense Categories")
-    tags = fm.get_top_expense_tags()
-    if tags:
-        tag_df = pd.DataFrame(tags, columns=["Tag", "Amount"])
-        st.bar_chart(tag_df.set_index("Tag"))
-    else:
-        st.warning("No expenses yet.")
+                        st.success(f"Transaction ID {record.id} updated!")
 
-    st.subheader("⚠️ Large Expenses (₹10,000+)")
-    big_txns = fm.get_large_expenses()
-    if big_txns:
-        st.dataframe(pd.DataFrame(big_txns, columns=["ID", "Tag", "Amount", "Date", "Desc", "Type"]))
-    else:
-        st.success("No large transactions found.")
+                        st.rerun()
 
-# ============================
-# 🧾 RECORD MANAGEMENT SECTION
-# ============================
-with tab3:
-    st.header("🧾 Manage Records")
+                    if delete_submitted:
 
-    # Add New Entry
-    with st.expander("➕ Add Transaction"):
-        tag = st.text_input("Tag")
-        amount = st.number_input("Amount", min_value=0.0, step=100.0)
-        date = st.date_input("Date", value=datetime.today())
-        desc = st.text_input("Description")
-        ttype = st.radio("Type", ["income", "expense"])
-        if st.button("✅ Add Entry"):
-            fm.add_data(tag, amount, date.strftime("%Y-%m-%d"), desc, ttype)
-            st.success("Entry Added!")
+                        self.fm.delete_data(record.id)
 
-    # View All
-    with st.expander("📋 View All Transactions"):
-        all_data = fm.get_all_data()
-        if all_data:
-            df_all = pd.DataFrame(all_data, columns=["ID", "Tag", "Amount", "Date", "Desc", "Type"])
-            st.dataframe(df_all)
-        else:
-            st.info("No entries available.")
+                        st.warning(f"Transaction ID {record.id} deleted!")
 
-    # Filter by Month
-    with st.expander("📅 Filter by Month"):
-        selected_month = st.text_input("Month (Format: YYYY-MM)")
-        if selected_month:
-            results = fm.filter_by_month(selected_month)
-            if results:
-                st.dataframe(pd.DataFrame(results, columns=["ID", "Tag", "Amount", "Date", "Desc", "Type"]))
-            else:
-                st.warning("No entries for this month.")
+                        st.rerun()
 
-    # Delete
-    with st.expander("❌ Delete Entry"):
-        del_id = st.number_input("ID to Delete", min_value=1)
-        if st.button("🗑️ Delete"):
-            fm.delete_data(del_id)
-            st.success(f"Entry ID {del_id} deleted.")
 
-    # Update
-    with st.expander("✏️ Update Entry"):
-        update_id = st.number_input("ID to Update", min_value=1)
-        new_tag = st.text_input("New Tag")
-        new_amount = st.number_input("New Amount", min_value=0.0)
-        new_date = st.date_input("New Date", value=datetime.today(), key="update_date")
-        new_desc = st.text_input("New Description")
-        new_type = st.radio("New Type", ["income", "expense"], key="update_type")
-        if st.button("✏️ Update Entry"):
-            fm.update_data(update_id, new_tag, new_amount, new_date.strftime("%Y-%m-%d"), new_desc, new_type)
-            st.success("Updated successfully.")
 
-    # Export
-    with st.expander("💾 Export to CSV"):
-        export_path = st.text_input("Export Path", value="exported.csv")
-        if st.button("📤 Export"):
-            fm.export_data(export_path)
-            st.success(f"Exported to {export_path}")
+        elif action == "Import/Export Data":
 
-    # Import
-    with st.expander("📥 Import Statement"):
-        uploaded_file = st.file_uploader("Upload CSV")
-        bank_name = st.text_input("Bank Name (e.g., pnb)")
-        if st.button("📥 Import"):
-            if uploaded_file and bank_name:
-                import_path = f"/tmp/{uploaded_file.name}"
-                with open(import_path, "wb") as f:
-                    f.write(uploaded_file.read())
-                fm.extract_bank_statement_to_db(import_path, bank_name)
-                st.success("Imported successfully!")
-            else:
-                st.warning("Upload file and enter bank name.")
+            st.subheader("💾 Import or Export Your Data")
 
+            col1, col2 = st.columns(2)
+
+            
+
+            with col1:
+
+                st.markdown("**Export to CSV**")
+
+                all_data = self.fm.get_all_data()
+
+                if all_data:
+
+                    df_export = pd.DataFrame(all_data)
+
+                    csv = df_export.to_csv(index=False).encode('utf-8')
+
+                    st.download_button(
+
+                        label="📤 Download All Data as CSV",
+
+                        data=csv,
+
+                        file_name=f"finance_export_{datetime.now().strftime('%Y%m%d')}.csv",
+
+                        mime="text/csv",
+
+                    )
+
+                else:
+
+                    st.info("No data to export.")
+
+
+
+            with col2:
+
+                st.markdown("**Import from Bank Statement**")
+
+                uploaded_file = st.file_uploader("Upload CSV Statement", type="csv")
+
+                bank_name = st.text_input("Bank Name (e.g., pnb)", help="Used by the importer to parse correctly.")
+
+                if st.button("📥 Import Now"):
+
+                    if uploaded_file and bank_name:
+
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmpfile:
+
+                            tmpfile.write(uploaded_file.getvalue())
+
+                            import_path = tmpfile.name
+
+                        
+
+                        try:
+
+                            self.fm.extract_bank_statement_to_db(import_path, bank_name)
+
+                            st.success("Bank statement imported successfully!")
+
+                            st.rerun()
+
+                        except Exception as e:
+
+                            st.error(f"Failed to import: {e}")
+
+                    else:
+
+                        st.warning("Please upload a file and provide the bank name.")
+
+
+
+
+
+    def render_ai_advisor(self):
+
+        st.header("Your AI-Powered Financial Co-Pilot")
+
+        st.caption("Answer the questions below and our AI will generate a personalized financial health report and action plan for you.")
+
+        
+
+        with st.form("ai_advisor_form"):
+
+            st.subheader("Tell Us About Yourself")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                goal = st.text_input("🎯 What is your primary financial goal?*", help="e.g., Buy a house, Save for retirement, Create an emergency fund")
+
+                age = st.text_input("🎂 Your Age")
+
+                dependents = st.selectbox("👪 Financial Dependents", ["0", "1", "2", "3 or more"])
+
+                income_source = st.selectbox("💼 Main Income Source", ["Salary", "Business", "Freelancing", "Other", "No Income"])
+
+                
+
+            with col2:
+
+                goal_timeline = st.selectbox("📅 What is the timeline for your goal?", ["< 1 year", "1-3 years", "3-5 years", "5+ years"])
+
+                habit_concern = st.text_area("⚠️ What is your biggest spending concern?", help="e.g., Spending too much on dining out, Impulse shopping online")
+
+                income_stability = st.radio("📊 Is your income stable?", ["Yes, it's consistent", "No, it fluctuates"])
+
+            
+
+            existing_commitments = st.text_area("📄 List any existing loans or major investments", help="e.g., Student loan, Car loan, Mutual Fund SIPs")
+
+            
+
+            submitted = st.form_submit_button("🚀 Generate AI Report")
+
+            if submitted:
+
+                if not goal or not habit_concern:
+
+                    st.warning("Please fill in the required fields marked with *.")
+
+                else:
+
+                    with st.spinner("Your AI Co-Pilot is analyzing your profile and drafting your report..."):
+
+                        user_data = {
+
+                            "goal": f"{goal} (Timeline: {goal_timeline})",
+
+                            "age": age,
+
+                            "dependents": dependents,
+
+                            "income_source": income_source,
+
+                            "income_stability": income_stability,
+
+                            "bad_habit_concern": habit_concern,
+
+                            "existing_commitments": existing_commitments
+
+                        }
+
+                        st.session_state.ai_report = self.ai.advisor({"user_answers": user_data})
+
+        
+
+        if st.session_state.ai_report:
+
+            st.markdown("---")
+
+            st.balloons()
+
+            st.success("Your financial report is ready!")
+
+            report = st.session_state.ai_report
+
+
+
+            st.subheader("📝 Executive Summary")
+
+            st.markdown(report.get("report", "No summary available."))
+
+
+
+            final_advice = report.get("final_advice")
+
+            if final_advice:
+
+                st.subheader("💡 Key Recommendations")
+
+                cols = st.columns(3)
+
+                cols[0].metric("🚨 Emergency Fund", final_advice.get('emergency_fund', 'N/A'))
+
+                cols[1].metric("📈 Investment Advice", final_advice.get('investment_advice', 'N/A'))
+
+                cols[2].metric("🛡️ Insurance Advice", final_advice.get('insurance_advice', 'N/A'))
+
+                
+
+                with st.expander("Show detailed action plan"):
+
+                    st.markdown(f"**💸 Expense Management:** {final_advice.get('expense_management', '')}")
+
+                    st.markdown(f"**💰 Tax Planning:** {final_advice.get('tax_planning', '')}")
+
+                    if "action_plan" in final_advice:
+
+                        st.markdown("**🧩 Your Action Plan:**")
+
+                        for i, step in enumerate(final_advice["action_plan"], 1):
+
+                            st.markdown(f"{i}. {step}")
+
+
+
+if __name__ == "__main__":
+
+    app = FinanceApp()
+
+    app.run()
