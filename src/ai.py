@@ -2,6 +2,7 @@
 
 from .Ai.graph import graph  # your compiled LangGraph
 from typing import Dict
+import asyncio
 
 class AI:
     def __init__(self):
@@ -10,15 +11,21 @@ class AI:
     def advisor(self, user_answers: Dict) -> Dict:
         """
         Run the financial advisor agent with user input.
+        This is a synchronous wrapper for the async graph.
         """
         input_state = {
-            "user_answers": user_answers
+            "user_data": user_answers  # Updated to match new state format
         }
-        result = graph.invoke(input_state)
+        
+        # Run the async graph in a synchronous context
+        result = asyncio.run(graph.ainvoke(input_state))
 
         return {
-            "analysis_result": result.get("analysis_result"),
-            "goal_planner_result": result.get("goal_planner_result"),
-            "final_advice": result.get("final_advice"),
-            "report": result.get("final_report_markdown")
+            "collector_data": result.get("collector_data"),
+            "transaction": result.get("transaction"),
+            "behavior": result.get("behavior"),
+            "goal": result.get("goal"),
+            "advice": result.get("advice"),
+            "report": result.get("report"),
+            "report_eval": result.get("report_eval")
         }

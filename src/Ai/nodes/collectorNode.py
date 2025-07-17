@@ -9,8 +9,15 @@ class CollectorNode:
         self.fm = FinanceManager()
 
         
-    def __call__(self, state: dict):
-        answers = state.get("user_answers")
+    def __call__(self, state):
+        # Handle both dictionary and Pydantic model state formats
+        if hasattr(state, 'get'):
+            # Dictionary format (legacy)
+            answers = state.get("user_answers")
+        else:
+            # Pydantic model format (new)
+            answers = getattr(state, 'user_data', None)
+            
         income = self.fm.get_total_income()
         expense = self.fm.get_total_expense()
         savings = self.fm.get_savings()
@@ -31,8 +38,7 @@ class CollectorNode:
         }
 
         return {
-            "collector_data": structured_data,
-            **state
+            "collector_data": structured_data
         }
 
         

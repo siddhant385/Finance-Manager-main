@@ -16,6 +16,7 @@ import tempfile
 
 from src.financeManager import FinanceManager
 
+
 from src.ai import AI
 
 
@@ -459,24 +460,56 @@ class FinanceApp:
 
 
             st.subheader("📝 Executive Summary")
+            # Updated to handle new response format from the updated graph
+            if "report" in report and isinstance(report["report"], dict):
+                report_data = report["report"]
+                if "final_report" in report_data:
+                    st.markdown(report_data["final_report"])
+                else:
+                    st.markdown("Report generated successfully but content not available for display.")
+            else:
+                st.markdown(report.get("report", "No summary available."))
 
-            st.markdown(report.get("report", "No summary available."))
 
 
-
-            final_advice = report.get("final_advice")
-
-            if final_advice:
-
+            # Handle advice section with new format
+            advice_data = report.get("advice")
+            if advice_data and isinstance(advice_data, dict):
                 st.subheader("💡 Key Recommendations")
-
-                cols = st.columns(3)
-
-                cols[0].metric("🚨 Emergency Fund", final_advice.get('emergency_fund', 'N/A'))
-
-                cols[1].metric("📈 Investment Advice", final_advice.get('investment_advice', 'N/A'))
-
-                cols[2].metric("🛡️ Insurance Advice", final_advice.get('insurance_advice', 'N/A'))
+                
+                # Display advice information
+                if "personalized_advice" in advice_data:
+                    st.markdown("**📋 Personalized Advice:**")
+                    st.markdown(advice_data["personalized_advice"])
+                
+                if "implementation_steps" in advice_data:
+                    st.markdown("**🧩 Implementation Steps:**")
+                    steps = advice_data["implementation_steps"]
+                    if isinstance(steps, list):
+                        for i, step in enumerate(steps, 1):
+                            st.markdown(f"{i}. {step}")
+                    else:
+                        st.markdown(steps)
+                
+                # Show goal information if available
+                goal_data = report.get("goal")
+                if goal_data and isinstance(goal_data, dict):
+                    with st.expander("🎯 Your Financial Goals"):
+                        if "goal_title" in goal_data:
+                            st.markdown(f"**Goal:** {goal_data['goal_title']}")
+                        if "realistic_target" in goal_data:
+                            st.markdown(f"**Target:** {goal_data['realistic_target']}")
+                        if "timeline" in goal_data:
+                            st.markdown(f"**Timeline:** {goal_data['timeline']}")
+            else:
+                # Fallback to old format
+                final_advice = report.get("final_advice")
+                if final_advice:
+                    st.subheader("💡 Key Recommendations")
+                    cols = st.columns(3)
+                    cols[0].metric("🚨 Emergency Fund", final_advice.get('emergency_fund', 'N/A'))
+                    cols[1].metric("📈 Investment Advice", final_advice.get('investment_advice', 'N/A'))
+                    cols[2].metric("🛡️ Insurance Advice", final_advice.get('insurance_advice', 'N/A'))
 
                 
 
