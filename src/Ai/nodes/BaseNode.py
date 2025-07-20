@@ -56,9 +56,28 @@ class BaseNode(ABC):
         output_key = self._get_output_key()
 
         # CHANGED: Build the input dictionary for the chain by gathering each
-        # required key from the state object. A dictionary comprehension
-        # makes this clean and efficient.
-        input_data = {key: getattr(state, key) for key in input_keys}
+        # required key from the state object. Handle None values gracefully.
+        input_data = {}
+        for key in input_keys:
+            value = getattr(state, key)
+            # Convert None values to empty string for template compatibility
+            if value is None:
+                input_data[key] = ""
+                print(f"  📝 {key}: None (converted to empty string)")
+            else:
+                # Special logging for report_eval to track feedback flow
+                if key == "report_eval" and value:
+                    print(f"  🔄 FEEDBACK DETECTED in {key}:")
+                    if isinstance(value, dict):
+                        if "feedback" in value:
+                            print(f"    💬 Feedback: {value['feedback'][:100]}...")
+                        if "overall_score" in value:
+                            print(f"    📊 Score: {value['overall_score']}")
+                    else:
+                        print(f"    📄 Content: {str(value)[:100]}...")
+                else:
+                    print(f"  📝 {key}: {'✅ Present' if value else '❌ Empty'}")
+                input_data[key] = value
 
         try:
             # The chain is invoked with the dictionary containing all required inputs.

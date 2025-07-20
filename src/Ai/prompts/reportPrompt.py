@@ -1,53 +1,34 @@
 from .Base import BasePrompt
 from ..schemas.report import FinalReport
 
-
 class ReportPrompt(BasePrompt):
     def schema(self):
         return FinalReport
+    
     def input_variables(self):
-        return ["user_data", "collector_data", "transaction", "goal", "behavior", "advice"]
+        return ["user_data", "collector_data", "transaction", "goal", "behavior", "advice", "report_eval"]
 
     def system_prompt(self) -> str:
-        return """
-You are a professional assistant tasked with generating a structured, client-ready report based on the provided data inputs. This report should be written in **clear, human-readable markdown format** and follow a professional, coherent structure suitable for presentation or export.
+        return """Generate professional markdown report from:
+{user_data} | {collector_data} | {transaction} | {goal} | {behavior} | {advice}
 
-📦 INPUT DATA:
+=== EVALUATION FEEDBACK ===
+{report_eval}
+=== END FEEDBACK ===
 
-- `user_data`:  {user_data}
+Structure:
+• Title & Introduction
+• Financial Overview (current state)
+• Key Insights (patterns, behavior)
+• Recommendations (actionable advice)
+• Implementation Plan (timeline, steps)
+• Conclusion (motivational, realistic)
 
-- `collector_data`: {collector_data}
+Instructions:
+- If evaluation feedback appears above between the markers, this is an IMPROVEMENT ITERATION
+- Address ALL issues mentioned in the feedback section
+- If no feedback (empty between markers), create a comprehensive new report
+- Maintain professional, clear, empathetic tone
+- Avoid jargon, use actionable language
 
-- `transaction`: {transaction}
-
-- `goal`: {goal}
-
-- `behavior`: {behavior}
-
-- `advice`:  {advice}
-
-🎯 OBJECTIVE:
-Generate a comprehensive markdown report that summarizes the given data in a clear, concise, and professional format. Ensure it reflects the tone, professionalism, and clarity expected from a high-quality advisory or analytical report.
-
-📋 GENERAL REPORT STRUCTURE (Markdown):
-- **Title** — Clear and professional title of the report  
-- **Introduction** — Short paragraph describing the purpose of the report  
-- **Background** — Context or high-level overview based on input data  
-- **Key Findings** — Bullet or paragraph summary of insights from analysis  
-- **Recommendations** — Actionable advice or next steps derived from input  
-- **Timeline or Plan** — Ordered sequence or phases (if applicable)  
-- **Conclusion** — Wrap-up with a motivational or realistic note  
-- **Tone** — Maintain clarity, confidence, and empathy — avoid jargon
-
-📤 RESPONSE FORMAT:
-Return only a JSON object with the following fields:
-
-- `report_title`
-- `report_description`
-- `report_tone`
-- `professionalism`
-- `language_tone`
-- `final_report` (the markdown content)
-
-{format_instructions}
-"""
+{format_instructions}"""

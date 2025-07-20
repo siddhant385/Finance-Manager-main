@@ -15,4 +15,6 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "streamlit>=1.46.1",
     "peewee>=3.18.2",
+    "langchain-google-genai>=2.1.8",
+    "langchain-openai>=0.3.28",
 ]

@@ -26,4 +26,4 @@ class ReportEval(BaseModel):
     ai_generated_score: float = Field(..., description="Score indicating how well the AI-generated content meets expectations")
     overall_score: float = Field(..., description="Overall score of the report based on various criteria")
     feedback: str = Field(..., description="Feedback on the report's quality and areas for improvement")
-    is_completed: bool = Field(..., description="Indicates if the report evaluation process is completed")
+    is_completed: bool = Field(..., description="Indicates if the report doesn't need further improvements")
