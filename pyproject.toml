@@ -17,4 +17,6 @@ dependencies = [
     "peewee>=3.18.2",
     "langchain-google-genai>=2.1.8",
     "langchain-openai>=0.3.28",
+    "plotly>=6.2.0",
+    "litellm>=1.74.7",
 ]

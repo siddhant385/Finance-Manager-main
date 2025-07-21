@@ -6,11 +6,14 @@ from .nodes.adviceNode import AdviceNode
 from .nodes.reportNode import ReportNode
 from .nodes.reportEvalNode import ReportEvalNode
 
+from .llm_router.router import LLMRouter
+
+
 from langchain_core.utils.utils import secret_from_env
 from langgraph.graph import StateGraph, END, START
 from langgraph.types import Send
-from langchain_groq import ChatGroq
-from langchain_google_genai import ChatGoogleGenerativeAI
+# from langchain_groq import ChatGroq
+# from langchain_google_genai import ChatGoogleGenerativeAI
 # from langchain_openai import ChatOpenAI
 from pydantic import Field, SecretStr
 from typing import Optional
@@ -50,15 +53,7 @@ load_dotenv()
 
 
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
-    # other params...
-)
-
+llm = LLMRouter().get_langchain_llm("groq")
 
 
 # llm = ChatGroq(
